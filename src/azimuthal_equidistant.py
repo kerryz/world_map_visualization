@@ -33,12 +33,12 @@ class AzimuthalEquidistant(object):
     def project(self, (lat, long)):
         # if same coordinates as center point, then c = 0
         # and k = c / sin(c) will perform division by 0
-        if (lat, long) == (self.l0, self.p1):
+        if (lat, long) == (self.p1, self.l0):
             return (0.0, 0.0)
 
         # convert to radians and rename variables to match Wolfram link
-        p = radians(lat)
-        l = radians(long)
+        p = radians(lat)  # phi
+        l = radians(long)  # lambda
         # optimization, store repeated calculations
         sin_p = sin(p)
         cos_p = cos(p)
