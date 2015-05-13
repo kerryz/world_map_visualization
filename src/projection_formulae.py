@@ -1,8 +1,9 @@
+# -*- coding: utf-8 -*-
 from __future__ import division
 from math import radians, cos, sin, acos
 
 
-CENTER_COORD = (45.0, 0.0)  # (latitude, longtitude)
+CENTER_COORD = (45.0, 0.0)  # (latitude, longitude)
 
 
 def main():
@@ -10,7 +11,23 @@ def main():
     print azimuth.project((45.0, 10.0))
 
 
-class AzimuthalEquidistant(object):
+class Projection(object):
+    """
+    Abstract projection class
+    """
+    def project(self, (lat, long)):
+        """
+        Projects the latitude and longitude to 2d (x, y) map coordinates.
+
+        Returns
+        -------
+        (x, y) : (float, float)
+            the projected 2d map coordinates
+        """
+        raise NotImplementedError()
+
+
+class AzimuthalEquidistant(Projection):
     """
     Formulas taken from
     http://mathworld.wolfram.com/AzimuthalEquidistantProjection.html
@@ -20,7 +37,7 @@ class AzimuthalEquidistant(object):
         Parameters
         ----------
         (lat0, long0) : (float, float)
-            latitude and longtitude coordinates of the center of the projections,
+            latitude and longitude coordinates of the center of the projections,
             given as degrees, called phi_1 and lambda_0 in the Wolfram link
         """
         self.p1 = radians(lat0)  # phi_1
@@ -58,6 +75,33 @@ class AzimuthalEquidistant(object):
         # calculate Azimuthal Equidistant projection x, y coordinates
         x = k * cos_p * sin(l - self.l0)
         y = k * (self.cos_p1 * sin_p - self.sin_p1 * cosp_cosll0)
+
+        return (x, y)
+
+
+class SansonFlamsteed(Projection):
+    """
+    The Sanson–Flamsteed or the Mercator equal-area projection, or
+    the sinusoidal projection is a pseudocylindrical equal-area map projection.
+    http://en.wikipedia.org/wiki/Sinusoidal_projection
+    """
+    def __init__(self, central_meridian=0.0):
+        """
+        Parameters
+        ----------
+        central_meridian : float
+            the longitude of the center of the map
+        """
+        # lambda_0, same notation as the Wikipedia page
+        self.l0 = central_meridian
+
+    def project(self, (lat, long)):
+        # convert to radians and rename variables to match Wikipedia page
+        p = radians(lat)
+        l = radians(long)
+
+        x = (l - self.l0) * cos(p)
+        y = p
 
         return (x, y)
 
