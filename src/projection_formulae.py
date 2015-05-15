@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
-from math import radians, cos, sin, acos
+from math import pi, log, radians, cos, sin, tan, acos
 
 
 CENTER_COORD = (45.0, 0.0)  # (latitude, longitude)
@@ -29,6 +29,7 @@ class Projection(object):
 
 class AzimuthalEquidistant(Projection):
     """
+    Azimuthal equidistant projection.
     Formulas taken from
     http://mathworld.wolfram.com/AzimuthalEquidistantProjection.html
     """
@@ -37,8 +38,8 @@ class AzimuthalEquidistant(Projection):
         Parameters
         ----------
         (lat0, long0) : (float, float)
-            latitude and longitude coordinates of the center of the projections,
-            given as degrees, called phi_1 and lambda_0 in the Wolfram link
+            latitude and longitude (degrees) coordinates of the center of the projections,
+            called phi_1 and lambda_0 in the Wolfram link
         """
         self.p1 = radians(lat0)  # phi_1
         self.l0 = radians(long0)  # lambda_0
@@ -83,17 +84,20 @@ class SansonFlamsteed(Projection):
     """
     The Sanson–Flamsteed or the Mercator equal-area projection, or
     the sinusoidal projection is a pseudocylindrical equal-area map projection.
+
+    date: 2015-05-13
     http://en.wikipedia.org/wiki/Sinusoidal_projection
     """
-    def __init__(self, central_meridian=0.0):
+    def __init__(self, (lat0, long0)):
         """
         Parameters
         ----------
-        central_meridian : float
-            the longitude of the center of the map
+        (lat0, long0) : (float, float)
+            latitude and longitude (degrees) coordinates of the center of the projections,
+            called phi_1 and lambda_0 in the Wolfram link
         """
         # lambda_0, same notation as the Wikipedia page
-        self.l0 = central_meridian
+        self.l0 = long0
 
     def project(self, (lat, long)):
         # convert to radians and rename variables to match Wikipedia page
@@ -103,6 +107,41 @@ class SansonFlamsteed(Projection):
         x = (l - self.l0) * cos(p)
         y = p
 
+        return (x, y)
+
+
+class Mercator(Projection):
+    """
+    Mercator projection.
+    Formulas taken from
+    http://mathworld.wolfram.com/MercatorProjection.html
+    """
+    def __init__(self, (lat0, long0)):
+        """
+        Parameters
+        ----------
+        (lat0, long0) : (float, float)
+            latitude and longitude (degrees) coordinates of the center of the projections,
+            called phi_1 and lambda_0 in the Wolfram link
+        """
+        self.l0 = long0
+
+    def project(self, (lat, long)):
+        # TODO: be able to move central coord
+
+        # y-values go to infinity at the poles, fix
+        if lat <= -89:
+            lat = -89
+        if lat >= 89:
+            lat = 89
+
+        # convert to radians and rename variables to match Wolfram page
+        p = radians(lat)
+        l = radians(long)
+
+        x = l - self.l0
+        temp = tan(0.25*pi + 0.5*p)
+        y = log(temp)
         return (x, y)
 
 
