@@ -2,6 +2,8 @@
 from __future__ import division
 from math import pi, log, radians, cos, sin, tan, acos
 
+import numpy as np
+
 
 CENTER_COORD = (45.0, 0.0)  # (latitude, longitude)
 
@@ -143,6 +145,76 @@ class Mercator(Projection):
         temp = tan(0.25*pi + 0.5*p)
         y = log(temp)
         return (x, y)
+
+
+def get_region_projection_area((fig, ax), projection, region_coords, region_parts):
+    """
+    Returns the region area in pixels
+    """
+
+    # calculate the region area (no units, just using the projected x- and y-values)
+    region_projection_coords = [projection.project(coord) for coord in region_coords]
+    xs, ys = zip(*region_projection_coords)
+    region_area = 0
+    n = len(region_parts)
+    # args = []
+
+    for i in xrange(n):
+        start_i = region_parts[i]
+        if i == n-1:
+            # last element
+            region_area += get_polygon_area(xs[start_i:], ys[start_i:])
+            # args += [xs[start_i:], ys[start_i:], color]
+            break
+        end_i = region_parts[i+1]
+
+        # args += [xs[start_i:end_i], ys[start_i:end_i], color]
+        region_area += get_polygon_area(xs[start_i:end_i], ys[start_i:end_i])
+
+    # calculate the area of the entire axes (no units)
+    x_min, x_max = ax.get_xlim()
+    y_min, y_max = ax.get_ylim()
+    all_area = abs((x_max-x_min)*(y_max-y_min))
+
+    # calculate area of the entire axes in pixels
+    bbox = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+    width, height = bbox.width, bbox.height  # unit: inches
+    # convert to pixels
+    width *= fig.dpi
+    height *= fig.dpi
+    area_px = width * height
+
+    """
+    print "width px", width
+    print "height px", height
+    print "area px", area_px
+    print "region_area", region_area
+    print "all_area", all_area
+    print "region fraction", (region_area / all_area)
+    """
+
+    region_area_px = (region_area / all_area) * area_px
+
+    return int(region_area_px)
+
+
+def get_polygon_area(x, y):
+    """
+    http://stackoverflow.com/a/19875560/3694224
+
+    Parameters
+    ----------
+    x : [float]
+        list of x-values of vertices of the polygon
+    y : [float]
+        list of y-values of vertices of the polygon
+    """
+    x = np.asanyarray(x)
+    y = np.asanyarray(y)
+    n = len(x)
+    shift_up = np.arange(-n+1, 1)
+    shift_down = np.arange(-1, n-1)
+    return abs((x * (y.take(shift_up) - y.take(shift_down))).sum() / 2.0)
 
 
 if __name__ == "__main__":

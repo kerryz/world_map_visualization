@@ -8,7 +8,10 @@ from matplotlib import colors
 from matplotlib.patches import Circle
 # from matplotlib.colors import hex2color
 
-from projection_formulae import AzimuthalEquidistant, SansonFlamsteed, Mercator
+from projection_formulae import (
+    AzimuthalEquidistant, SansonFlamsteed, Mercator,
+    get_region_projection_area
+)
 
 
 LANDSHAPE_FILEPATH = "../data/landshape.txt"
@@ -41,15 +44,20 @@ def main():
     # Mercator projection
     mercator = Mercator(CENTER_COORDS)
     # Mercator projects infinite y-values at the poles, remove these values
-    mercator_landshape_coords = [(lat, long) for (lat, long) in landshape_coords if -85 < lat < 85]
+    # mercator_landshape_coords = [(lat, long) for (lat, long) in landshape_coords if -85 < lat < 85]
     # fig, ax = plot_landshape(mercator, mercator_landshape_coords, "Mercator projection")
+    fig, ax = plot_landshape(mercator, landshape_coords, "Mercator projection")
 
-    # region_coords = get_landshape_coords("../data/regions/014/landshape.txt")
-    # region_parts = get_landparts("../data/regions/014/landparts.txt")
-    # plot_landparts(ax, mercator, region_coords, region_parts, "green")
-    fig, ax = plt.subplots()
-    plot_regions((fig, ax), sanson_flam, REGIONS_FILEPATH, REGIONS_DIRPATH, lat_range=LAT_RANGE)
-    plot_cities((fig, ax), sanson_flam, CITIES_FILEPATH, lat_range=LAT_RANGE)
+    region_coords = get_landshape_coords("../data/regions/115/landshape.txt")
+    region_parts = get_landparts("../data/regions/115/landparts.txt")
+    # print get_region_projection_area(mercator, landshape_coords, region_coords, region_parts)
+    plot_landparts(ax, mercator, region_coords, region_parts, "green")
+    print get_region_projection_area((fig, ax), mercator, region_coords, region_parts)
+
+
+    # fig, ax = plt.subplots()
+    # plot_regions((fig, ax), sanson_flam, REGIONS_FILEPATH, REGIONS_DIRPATH, lat_range=LAT_RANGE)
+    # plot_cities((fig, ax), sanson_flam, CITIES_FILEPATH, lat_range=LAT_RANGE)
     # ax.set_ylim([-2, 3])
 
 
