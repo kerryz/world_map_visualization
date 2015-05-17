@@ -19,76 +19,136 @@ REGIONS_FILEPATH = "../data/regions.txt"
 REGIONS_DIRPATH = "../data/regions/"
 CITIES_FILEPATH = "../data/cities.txt"
 
+JAPAN_LANDSHAPE_FILEPATH = os.path.join(REGIONS_DIRPATH, "115", "landshape.txt")
+JAPAN_LANDPARTS_FILEPATH = os.path.join(REGIONS_DIRPATH, "115", "landparts.txt")
+TAIWAN_LANDSHAPE_FILEPATH = os.path.join(REGIONS_DIRPATH, "231", "landshape.txt")
+TAIWAN_LANDPARTS_FILEPATH = os.path.join(REGIONS_DIRPATH, "231", "landparts.txt")
+
 # CITY_SIZE_FACTOR = 2*1e-7
 CITY_SIZE_FACTOR = 2*1e-9
 ECONOMIC_LEVELS = 7
 
 CENTER_COORDS = (0.0, 0.0)  # latitude, longitude
-LAT_RANGE = (10, 80)  # latitude range
+LAT_RANGE_2 = (10, 80)  # latitude range
 ALL_LAT_RANGE = (-90, 90)
 ALL_LONG_RANGE = (-180, 180)
+# Mercator projects infinite y-values at the poles, don't use those values
+LAT_RANGE_MERCATOR = (-80, 85)
+
+BEIJING_COORDS = (39.9167, 116.3833)  # latitude, longitude
+LA_COORDS = (34.0500, -118.2500)  # Los Angeles
 
 
 def main():
-    # get (latitude, longitude) coordinates
-    landshape_coords = get_landshape_coords(LANDSHAPE_FILEPATH, lat_range=LAT_RANGE)
-
-    # Azimuth equidistant projection
     azimuth = AzimuthalEquidistant(CENTER_COORDS)
-    # plot_landshape(azimuth, landshape_coords, "Azimuth Equidistant Projection")
-
-    # Sanson-Flamsteed, a.k.a. sinusoidal projection
-    sanson_flam = SansonFlamsteed(CENTER_COORDS)  # only requires the longitude, the meridian
-    # plot_landshape(sanson_flam, landshape_coords, "Sanson-Flamsteed Projection")
-
-    # Mercator projection
+    sanson_flam = SansonFlamsteed(CENTER_COORDS)
     mercator = Mercator(CENTER_COORDS)
-    # Mercator projects infinite y-values at the poles, remove these values
-    # mercator_landshape_coords = [(lat, long) for (lat, long) in landshape_coords if -85 < lat < 85]
-    # fig, ax = plot_landshape(mercator, mercator_landshape_coords, "Mercator projection")
-    fig, ax = plot_landshape(mercator, landshape_coords, "Mercator projection")
+    print """
+    Enter an option:
 
-    region_coords = get_landshape_coords("../data/regions/115/landshape.txt")
-    region_parts = get_landparts("../data/regions/115/landparts.txt")
-    # print get_region_projection_area(mercator, landshape_coords, region_coords, region_parts)
-    plot_landparts(ax, mercator, region_coords, region_parts, "green")
-    print get_region_projection_area((fig, ax), mercator, region_coords, region_parts)
+    1: Visualize the whole world
+    2: Azimuthal equidistant, Sanson-Flamsteed (sinusoidal), and Mercator projections
+    3: Geodesic path between Beijing and Los Angeles
+    """
+
+    command = raw_input("Enter option: ").strip()
+
+    # Visualize whole world
+    if command == "1":
+        fig, ax = plot_regions(
+            mercator, REGIONS_FILEPATH, REGIONS_DIRPATH,
+            "Whole world visualization", lat_range=LAT_RANGE_MERCATOR)
+        plot_cities((fig, ax), mercator, CITIES_FILEPATH, lat_range=LAT_RANGE_MERCATOR)
+        plt.show()
+    # end option 1
+
+    # Azimuthal equidistant, Sanson-Flamsteed (sinusoidal), and Mercator projections
+    elif command == "2":
+        japan_region_coords = get_landshape_coords(JAPAN_LANDSHAPE_FILEPATH)
+        japan_region_parts = get_landparts(JAPAN_LANDPARTS_FILEPATH)
+        taiwan_region_coords = get_landshape_coords(TAIWAN_LANDSHAPE_FILEPATH)
+        taiwan_region_parts = get_landparts(TAIWAN_LANDPARTS_FILEPATH)
+
+        # Azimuthal
+        print
+        print "Calculating Azimuthal equidistant projection..."
+        fig, ax = plot_regions(
+            azimuth, REGIONS_FILEPATH, REGIONS_DIRPATH,
+            "Azimuthal equidistant projection", lat_range=LAT_RANGE_2)
+        plot_cities((fig, ax), azimuth, CITIES_FILEPATH, lat_range=LAT_RANGE_2)
+        # ax.set_ylim([0.0, 2.5])
+        japan_pixels_a = get_region_projection_area(
+            (fig, ax), azimuth, japan_region_coords, japan_region_parts)
+        taiwan_pixels_a = get_region_projection_area(
+            (fig, ax), azimuth, taiwan_region_coords, taiwan_region_parts)
+
+        # Sanson-Flamsteed (sinusoidal)
+        print "Calculating Sanson-Flamsteed projection..."
+        fig, ax = plot_regions(
+            sanson_flam, REGIONS_FILEPATH, REGIONS_DIRPATH,
+            "Sanson-Flamsteed projection", lat_range=LAT_RANGE_2)
+        plot_cities((fig, ax), sanson_flam, CITIES_FILEPATH, lat_range=LAT_RANGE_2)
+        japan_pixels_s = get_region_projection_area(
+            (fig, ax), sanson_flam, japan_region_coords, japan_region_parts)
+        taiwan_pixels_s = get_region_projection_area(
+            (fig, ax), sanson_flam, taiwan_region_coords, taiwan_region_parts)
+
+        # Mercator
+        print "Calculating Mercator projection..."
+        fig, ax = plot_regions(
+            mercator, REGIONS_FILEPATH, REGIONS_DIRPATH,
+            "Mercator projection", lat_range=LAT_RANGE_2)
+        plot_cities((fig, ax), mercator, CITIES_FILEPATH, lat_range=LAT_RANGE_2)
+        japan_pixels_m = get_region_projection_area(
+            (fig, ax), mercator, japan_region_coords, japan_region_parts)
+        taiwan_pixels_m = get_region_projection_area(
+            (fig, ax), mercator, taiwan_region_coords, taiwan_region_parts)
+
+        print
+        print "----------------------------------"
+        print "         Number of pixels"
+        print "----------------------------------"
+        print "                 |   Japan | Taiwan"
+        print "Azimuthal        |     {0} | {1}".format(japan_pixels_a, taiwan_pixels_a)
+        print "Sanson-Flamsteed |     {0} | {1}".format(japan_pixels_s, taiwan_pixels_s)
+        print "Mercator         |     {0} | {1}".format(japan_pixels_m, taiwan_pixels_m)
+        print "----------------------------------"
+
+        plt.show()
+    # end option 2
+
+    # Geodesic path between Beijing and Los Angeles
+    elif command == "3":
+        landshape_coords = get_landshape_coords(LANDSHAPE_FILEPATH)
+        # Azimuthal
+        fig, ax = plot_landshape(azimuth, landshape_coords, "Azimuth Equidistant Projection")
+        plot_geodesic(ax, azimuth, LA_COORDS, BEIJING_COORDS)
+        # Sanson-Flamsteed, a.k.a. sinusoidal projection
+        fig, ax = plot_landshape(sanson_flam, landshape_coords, "Sanson-Flamsteed Projection")
+        plot_geodesic(ax, sanson_flam, LA_COORDS, BEIJING_COORDS)
+        # Mercator projection
+        mercator_landshape_coords = [
+            (lat, long) for (lat, long) in landshape_coords
+            if LAT_RANGE_MERCATOR[0] < lat < LAT_RANGE_MERCATOR[1]
+        ]
+        fig, ax = plot_landshape(mercator, mercator_landshape_coords, "Mercator projection")
+        plot_geodesic(ax, mercator, LA_COORDS, BEIJING_COORDS)
+
+        plt.show()
+
+    else:
+        print('Invalid Command.')
 
 
-    # fig, ax = plt.subplots()
-    # plot_regions((fig, ax), sanson_flam, REGIONS_FILEPATH, REGIONS_DIRPATH, lat_range=LAT_RANGE)
-    # plot_cities((fig, ax), sanson_flam, CITIES_FILEPATH, lat_range=LAT_RANGE)
-    # ax.set_ylim([-2, 3])
-
-
-
-    # show plots
-    plt.show()
-
-
-def plot_cities((fig, ax), projection, cities_filepath,
-                lat_range=ALL_LONG_RANGE, long_range=ALL_LONG_RANGE):
-    cities_info = []
-    lat_min, lat_max = lat_range
-    long_min, long_max = long_range
-    with open(cities_filepath) as file:
-        for line in file:
-            city, size, long, lat = line.strip().split("|")
-            size, long, lat = float(size), float(long), float(lat)
-            if lat_min <= lat <= lat_max and long_min <= long <= long_max:
-                cities_info.append((city, size, (lat, long)))
-    color = "#0551BE"
-    for _, size, coord in cities_info:
-        x, y = projection.project(coord)
-        ax.add_artist(Circle(
-            xy=(x, y), radius=size*CITY_SIZE_FACTOR, alpha=0.5,
-            facecolor=color, edgecolor='none'
-        ))
-        # ax.plot(x, y, 'o', color=color, markersize=size*CITY_SIZE_FACTOR, markeredgecolor=None)
-
-
-def plot_regions((fig, ax), projection, regions_filepath, regions_dirpath,
+def plot_regions(projection, regions_filepath, regions_dirpath, title,
                  lat_range=ALL_LAT_RANGE, long_range=ALL_LONG_RANGE):
+    """
+    Returns
+    -------
+    fig, ax
+    """
+    fig, ax = plt.subplots()
+    ax.set_title(title)
     # get region economic prosperity levels
     econ_levels = []
     with open(regions_filepath) as file:
@@ -132,6 +192,28 @@ def plot_regions((fig, ax), projection, regions_filepath, regions_dirpath,
         color = econ_cmap(econ_levels[int(reg_dir)] * norm)
         color = colors.rgb2hex(color)
         plot_landparts(ax, projection, landshape_coords, landparts, color)
+
+    return fig, ax
+
+
+def plot_cities((fig, ax), projection, cities_filepath,
+                lat_range=ALL_LONG_RANGE, long_range=ALL_LONG_RANGE):
+    cities_info = []
+    lat_min, lat_max = lat_range
+    long_min, long_max = long_range
+    with open(cities_filepath) as file:
+        for line in file:
+            city, size, long, lat = line.strip().split("|")
+            size, long, lat = float(size), float(long), float(lat)
+            if lat_min <= lat <= lat_max and long_min <= long <= long_max:
+                cities_info.append((city, size, (lat, long)))
+    color = "#0551BE"
+    for _, size, coord in cities_info:
+        x, y = projection.project(coord)
+        ax.add_artist(Circle(
+            xy=(x, y), radius=size*CITY_SIZE_FACTOR, alpha=0.5,
+            facecolor=color, edgecolor='none'
+        ))
 
 
 def plot_landparts(ax, projection, landshape_coords, landparts, color):
@@ -205,6 +287,55 @@ def plot_landshape(projection, landshape_coords, title):
     # ax.set_axis_bgcolor((0.9686274509803922, 0.9450980392156862, 0.8745098039215686))
     ax.set_axis_bgcolor('black')
     return fig, ax
+
+
+def plot_geodesic(ax, projection, start, end):
+    """
+    Assumes geodesic path will not go around the poles
+    """
+
+    lat0, long0 = start
+    lat1, long1 = end
+
+    lat_min, lat_max = min(lat0, lat1), max(lat0, lat1)
+    long_min, long_max = min(long0, long1), max(long0, long1)
+
+    if long_min == long0:
+        lat_start, long_start = lat0, long0
+        lat_end, long_end = lat1, long1
+    else:
+        lat_start, long_start = lat1, long1
+        lat_end, long_end = lat0, long0
+
+    # latitudes
+    lats = np.linspace(lat_start, lat_end, num=100)
+
+    # go east or west beginning from long_min
+    east_distance = long_max - long_min
+    west_distance = (long_min - (-180.0)) + (180 - long_max)
+    going_east = east_distance <= west_distance
+    if going_east:
+        longs = np.linspace(long_start, long_end, num=100)
+        projected_coords = [projection.project(coord) for coord in zip(lats, longs)]
+        xs = [x for (x, y) in projected_coords]
+        ys = [y for (x, y) in projected_coords]
+        ax.plot(xs, ys, 'b-')
+    else:
+        # going west
+        west_points = int(100 * (long_min - (-180.0))/west_distance)
+        east_points = 100 - west_points
+        longs = np.concatenate((
+            np.linspace(long_min, -180, num=west_points),
+            np.linspace(180, long_max, num=east_points)
+        ))
+        projected_coords = [projection.project(coord) for coord in zip(lats, longs)]
+        projected_coords_west = projected_coords[:west_points]
+        projected_coords_east = projected_coords[west_points:]
+        xs_west = [x for (x, y) in projected_coords_west]
+        ys_west = [y for (x, y) in projected_coords_west]
+        xs_east = [x for (x, y) in projected_coords_east]
+        ys_east = [y for (x, y) in projected_coords_east]
+        ax.plot(xs_west, ys_west, xs_east, ys_east, 'b-')
 
 
 def get_landshape_coords(landshape_filepath, lat_range=ALL_LAT_RANGE, long_range=ALL_LONG_RANGE):
