@@ -58,6 +58,8 @@ def main():
         fig, ax = plot_regions(
             mercator, REGIONS_FILEPATH, REGIONS_DIRPATH,
             "Whole world visualization", lat_range=LAT_RANGE_MERCATOR)
+        plot_lat_long_grid(
+            ax, mercator, LAT_RANGE_MERCATOR, ALL_LONG_RANGE, lat_grids=13, long_grids=23)
         plot_cities((fig, ax), mercator, CITIES_FILEPATH, lat_range=LAT_RANGE_MERCATOR)
         plt.show()
     # end option 1
@@ -75,6 +77,7 @@ def main():
         fig, ax = plot_regions(
             azimuth, REGIONS_FILEPATH, REGIONS_DIRPATH,
             "Azimuthal equidistant projection", lat_range=LAT_RANGE_2)
+        plot_lat_long_grid(ax, azimuth, LAT_RANGE_2, ALL_LONG_RANGE)
         plot_cities((fig, ax), azimuth, CITIES_FILEPATH, lat_range=LAT_RANGE_2)
         # ax.set_ylim([0.0, 2.5])
         japan_pixels_a = get_region_projection_area(
@@ -87,6 +90,8 @@ def main():
         fig, ax = plot_regions(
             sanson_flam, REGIONS_FILEPATH, REGIONS_DIRPATH,
             "Sanson-Flamsteed projection", lat_range=LAT_RANGE_2)
+        plot_lat_long_grid(ax, sanson_flam, LAT_RANGE_2, ALL_LONG_RANGE, long_grids=9)
+        ax.set_xlim([-3.5, 3.5])
         plot_cities((fig, ax), sanson_flam, CITIES_FILEPATH, lat_range=LAT_RANGE_2)
         japan_pixels_s = get_region_projection_area(
             (fig, ax), sanson_flam, japan_region_coords, japan_region_parts)
@@ -98,6 +103,7 @@ def main():
         fig, ax = plot_regions(
             mercator, REGIONS_FILEPATH, REGIONS_DIRPATH,
             "Mercator projection", lat_range=LAT_RANGE_2)
+        plot_lat_long_grid(ax, mercator, LAT_RANGE_2, ALL_LONG_RANGE)
         plot_cities((fig, ax), mercator, CITIES_FILEPATH, lat_range=LAT_RANGE_2)
         japan_pixels_m = get_region_projection_area(
             (fig, ax), mercator, japan_region_coords, japan_region_parts)
@@ -121,7 +127,7 @@ def main():
     elif command == "3":
         landshape_coords = get_landshape_coords(LANDSHAPE_FILEPATH)
         # Azimuthal
-        fig, ax = plot_landshape(azimuth, landshape_coords, "Azimuth Equidistant Projection")
+        fig, ax = plot_landshape(azimuth, landshape_coords, "Azimuthal Equidistant Projection")
         plot_geodesic(ax, azimuth, LA_COORDS, BEIJING_COORDS)
         # Sanson-Flamsteed, a.k.a. sinusoidal projection
         fig, ax = plot_landshape(sanson_flam, landshape_coords, "Sanson-Flamsteed Projection")
@@ -134,6 +140,7 @@ def main():
         fig, ax = plot_landshape(mercator, mercator_landshape_coords, "Mercator projection")
         plot_geodesic(ax, mercator, LA_COORDS, BEIJING_COORDS)
 
+        plt.tight_layout()
         plt.show()
 
     else:
@@ -193,6 +200,7 @@ def plot_regions(projection, regions_filepath, regions_dirpath, title,
         color = colors.rgb2hex(color)
         plot_landparts(ax, projection, landshape_coords, landparts, color)
 
+    fig.tight_layout()
     return fig, ax
 
 
@@ -286,6 +294,7 @@ def plot_landshape(projection, landshape_coords, title):
     )
     # ax.set_axis_bgcolor((0.9686274509803922, 0.9450980392156862, 0.8745098039215686))
     ax.set_axis_bgcolor('black')
+    fig.tight_layout()
     return fig, ax
 
 
@@ -449,6 +458,31 @@ def update_landparts(i, landparts, last_j):
                 landparts = np.delete(landparts, j+1)
             updated = True
     return landparts, j
+
+
+def plot_lat_long_grid(
+        ax, projection, lat_range, long_range,
+        lat_grids=9, long_grids=9, color="#D1FFFF"):
+    (lat_min, lat_max) = lat_range
+    (long_min, long_max) = long_range
+
+    lat_grid = np.linspace(lat_min, lat_max, num=lat_grids)
+    long_grid = np.linspace(long_min, long_max, num=long_grids)
+
+    lats = np.linspace(lat_min, lat_max, num=300)
+    longs = np.linspace(long_min, long_max, num=300)
+
+    for lat in lat_grid:
+        projected_coords = [projection.project(coord) for coord in zip([lat]*300, longs)]
+        xs = [x for (x, y) in projected_coords]
+        ys = [y for (x, y) in projected_coords]
+        ax.plot(xs, ys, '-', color=color, linewidth=0.5)
+
+    for long in long_grid:
+        projected_coords = [projection.project(coord) for coord in zip(lats, [long]*300)]
+        xs = [x for (x, y) in projected_coords]
+        ys = [y for (x, y) in projected_coords]
+        ax.plot(xs, ys, '-', color=color, linewidth=0.5)
 
 
 if __name__ == "__main__":
