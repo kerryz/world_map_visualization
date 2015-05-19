@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 
+import sys
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,11 +14,15 @@ from projection_formulae import (
     get_region_projection_area
 )
 
+# can be changed if path to data directory is passed through command line
+# see bottom of this page
+DATA_DIR_PATH = os.path.join("..", "data")
 
-LANDSHAPE_FILEPATH = "../data/landshape.txt"
-REGIONS_FILEPATH = "../data/regions.txt"
-REGIONS_DIRPATH = "../data/regions/"
-CITIES_FILEPATH = "../data/cities.txt"
+LANDSHAPE_FILEPATH = os.path.join(DATA_DIR_PATH, "landshape.txt")
+REGIONS_FILEPATH = os.path.join(DATA_DIR_PATH, "regions.txt")
+CITIES_FILEPATH = os.path.join(DATA_DIR_PATH, "cities.txt")
+REGIONS_DIRPATH = os.path.join(DATA_DIR_PATH, "regions")
+# -----------------------------------
 
 JAPAN_LANDSHAPE_FILEPATH = os.path.join(REGIONS_DIRPATH, "115", "landshape.txt")
 JAPAN_LANDPARTS_FILEPATH = os.path.join(REGIONS_DIRPATH, "115", "landparts.txt")
@@ -40,7 +45,7 @@ LA_COORDS = (34.0500, -118.2500)  # Los Angeles
 
 
 def main():
-    azimuth = AzimuthalEquidistant(CENTER_COORDS)
+    azimuth = AzimuthalEquidistant(BEIJING_COORDS)
     sanson_flam = SansonFlamsteed(CENTER_COORDS)
     mercator = Mercator(CENTER_COORDS)
     print """
@@ -86,10 +91,10 @@ def main():
             (fig, ax), azimuth, taiwan_region_coords, taiwan_region_parts)
 
         # Sanson-Flamsteed (sinusoidal)
-        print "Calculating Sanson-Flamsteed projection..."
+        print "Calculating sinusoidal projection..."
         fig, ax = plot_regions(
             sanson_flam, REGIONS_FILEPATH, REGIONS_DIRPATH,
-            "Sanson-Flamsteed projection", lat_range=LAT_RANGE_2)
+            "Sinusoidal projection", lat_range=LAT_RANGE_2)
         plot_lat_long_grid(ax, sanson_flam, LAT_RANGE_2, ALL_LONG_RANGE, long_grids=9)
         ax.set_xlim([-3.5, 3.5])
         plot_cities((fig, ax), sanson_flam, CITIES_FILEPATH, lat_range=LAT_RANGE_2)
@@ -130,7 +135,7 @@ def main():
         fig, ax = plot_landshape(azimuth, landshape_coords, "Azimuthal Equidistant Projection")
         plot_geodesic(ax, azimuth, LA_COORDS, BEIJING_COORDS)
         # Sanson-Flamsteed, a.k.a. sinusoidal projection
-        fig, ax = plot_landshape(sanson_flam, landshape_coords, "Sanson-Flamsteed Projection")
+        fig, ax = plot_landshape(sanson_flam, landshape_coords, "Sinusoidal projection")
         plot_geodesic(ax, sanson_flam, LA_COORDS, BEIJING_COORDS)
         # Mercator projection
         mercator_landshape_coords = [
@@ -486,4 +491,12 @@ def plot_lat_long_grid(
 
 
 if __name__ == "__main__":
+
+    if len(sys.argv) > 1:
+        DATA_DIR_PATH = sys.argv[1]
+        LANDSHAPE_FILEPATH = os.path.join(DATA_DIR_PATH, "landshape.txt")
+        REGIONS_FILEPATH = os.path.join(DATA_DIR_PATH, "regions.txt")
+        CITIES_FILEPATH = os.path.join(DATA_DIR_PATH, "cities.txt")
+        REGIONS_DIRPATH = os.path.join(DATA_DIR_PATH, "regions")
+
     main()
