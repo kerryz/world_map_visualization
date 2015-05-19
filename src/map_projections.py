@@ -3,8 +3,10 @@ from __future__ import division
 
 import sys
 import os
+import math
 import numpy as np
 import matplotlib.pyplot as plt
+from math import sqrt, pow, sin, cos
 from matplotlib import colors
 from matplotlib.patches import Circle
 # from matplotlib.colors import hex2color
@@ -45,7 +47,7 @@ LA_COORDS = (34.0500, -118.2500)  # Los Angeles
 
 
 def main():
-    azimuth = AzimuthalEquidistant(BEIJING_COORDS)
+    azimuth = AzimuthalEquidistant(CENTER_COORDS)
     sanson_flam = SansonFlamsteed(CENTER_COORDS)
     mercator = Mercator(CENTER_COORDS)
     print """
@@ -63,8 +65,8 @@ def main():
         fig, ax = plot_regions(
             mercator, REGIONS_FILEPATH, REGIONS_DIRPATH,
             "Whole world visualization", lat_range=LAT_RANGE_MERCATOR)
-        plot_lat_long_grid(
-            ax, mercator, LAT_RANGE_MERCATOR, ALL_LONG_RANGE, lat_grids=13, long_grids=23)
+        # plot_lat_long_grid(
+        #     ax, mercator, LAT_RANGE_MERCATOR, ALL_LONG_RANGE, lat_grids=13, long_grids=23)
         plot_cities((fig, ax), mercator, CITIES_FILEPATH, lat_range=LAT_RANGE_MERCATOR)
         plt.show()
     # end option 1
@@ -131,9 +133,13 @@ def main():
     # Geodesic path between Beijing and Los Angeles
     elif command == "3":
         landshape_coords = get_landshape_coords(LANDSHAPE_FILEPATH)
-        # Azimuthal
-        fig, ax = plot_landshape(azimuth, landshape_coords, "Azimuthal Equidistant Projection")
+        # Azimuthal, center at (latitude=0, longitude=0)
+        fig, ax = plot_landshape(azimuth, landshape_coords, "Azimuthal Equidistant Projection, Center at (0, 0)")
         plot_geodesic(ax, azimuth, LA_COORDS, BEIJING_COORDS)
+        # Azimuthal, center at Beijing
+        azimuth_bj = AzimuthalEquidistant(BEIJING_COORDS)
+        fig, ax = plot_landshape(azimuth_bj, landshape_coords, "Azimuthal Equidistant Projection, Center at Beijing")
+        plot_geodesic(ax, azimuth_bj, LA_COORDS, BEIJING_COORDS)
         # Sanson-Flamsteed, a.k.a. sinusoidal projection
         fig, ax = plot_landshape(sanson_flam, landshape_coords, "Sinusoidal projection")
         plot_geodesic(ax, sanson_flam, LA_COORDS, BEIJING_COORDS)
@@ -308,48 +314,75 @@ def plot_geodesic(ax, projection, start, end):
     Assumes geodesic path will not go around the poles
     """
 
-    lat0, long0 = start
-    lat1, long1 = end
+    coords = get_geodesic_line(start, end)
 
-    lat_min, lat_max = min(lat0, lat1), max(lat0, lat1)
-    long_min, long_max = min(long0, long1), max(long0, long1)
+    projected_coords = [projection.project(coord) for coord in coords]
+    xs = [x for (x, y) in projected_coords]
+    ys = [y for (x, y) in projected_coords]
 
-    if long_min == long0:
-        lat_start, long_start = lat0, long0
-        lat_end, long_end = lat1, long1
+    # segment coordinates where they change signs (pos to neg, or neg to pos)
+    # otherwise will connect lines from opposite sides of map
+    longs = [long for (lat, long) in coords]
+    longs_change = 0  # index where longs has changed sign
+    for i, long in enumerate(longs[1:]):
+        if long * longs[i] < 0:
+            # only if the current and the previous values are of opposite signs
+            # will the multiplication result in negative value
+            longs_change = i + 1
+            break
+
+    if longs_change:
+        ax.plot(xs[:longs_change], ys[:longs_change], 'b-')
+        ax.plot(xs[longs_change:], ys[longs_change:], 'b-')
     else:
-        lat_start, long_start = lat1, long1
-        lat_end, long_end = lat0, long0
-
-    # latitudes
-    lats = np.linspace(lat_start, lat_end, num=100)
-
-    # go east or west beginning from long_min
-    east_distance = long_max - long_min
-    west_distance = (long_min - (-180.0)) + (180 - long_max)
-    going_east = east_distance <= west_distance
-    if going_east:
-        longs = np.linspace(long_start, long_end, num=100)
-        projected_coords = [projection.project(coord) for coord in zip(lats, longs)]
-        xs = [x for (x, y) in projected_coords]
-        ys = [y for (x, y) in projected_coords]
         ax.plot(xs, ys, 'b-')
-    else:
-        # going west
-        west_points = int(100 * (long_min - (-180.0))/west_distance)
-        east_points = 100 - west_points
-        longs = np.concatenate((
-            np.linspace(long_min, -180, num=west_points),
-            np.linspace(180, long_max, num=east_points)
-        ))
-        projected_coords = [projection.project(coord) for coord in zip(lats, longs)]
-        projected_coords_west = projected_coords[:west_points]
-        projected_coords_east = projected_coords[west_points:]
-        xs_west = [x for (x, y) in projected_coords_west]
-        ys_west = [y for (x, y) in projected_coords_west]
-        xs_east = [x for (x, y) in projected_coords_east]
-        ys_east = [y for (x, y) in projected_coords_east]
-        ax.plot(xs_west, ys_west, xs_east, ys_east, 'b-')
+
+
+def get_geodesic_line(start, end, nr_segments=200):
+    (lat0, long0) = start
+    (lat1, long1) = end
+
+    lat0_rad, long0_rad = math.radians(lat0), math.radians(long0)
+    lat1_rad, long1_rad = math.radians(lat1), math.radians(long1)
+
+    frac_delta = (1.0/(nr_segments - 1))  # fractional increment
+
+    # distance radius
+    dist_rad = 2 * math.asin(
+        sqrt(
+            pow((sin((lat0_rad - lat1_rad) / 2)), 2)
+            + cos(lat0_rad) * cos(lat1_rad)
+            * pow((sin((long0_rad-long1_rad)/2)), 2)
+        )
+    )
+
+    # start coordinates
+    lats = [lat0]
+    longs = [long0]
+
+    # coordinates in between start and end
+    f = frac_delta
+    for _ in xrange(1, nr_segments - 1):
+        # f is a fraction along the path from start to end
+        A = sin((1-f)*dist_rad) / sin(dist_rad)
+        B = sin(f*dist_rad) / sin(dist_rad)
+        x = A*cos(lat0_rad)*cos(long0_rad) + B*cos(lat1_rad)*cos(long1_rad)
+        y = A*cos(lat0_rad)*sin(long0_rad) + B*cos(lat1_rad)*sin(long1_rad)
+        z = A*sin(lat0_rad) + B*sin(lat1_rad)
+        lat_i = math.atan2(z, sqrt(pow(x, 2) + pow(y, 2)))
+        long_i = math.atan2(y, x)
+        lat_i_deg = math.degrees(lat_i)
+        long_i_deg = math.degrees(long_i)
+        lats.append(lat_i_deg)
+        longs.append(long_i_deg)
+
+        f += frac_delta
+
+    # end coordinates
+    lats.append(lat1)
+    longs.append(long1)
+
+    return zip(lats, longs)
 
 
 def get_landshape_coords(landshape_filepath, lat_range=ALL_LAT_RANGE, long_range=ALL_LONG_RANGE):
