@@ -7,6 +7,16 @@ World map visualization using various map projections. A map projection is a sys
 
 Color codes will be used to visualizes the prosperity levels of different regions, cities' population sizes, and you can choose to draw the geodesic path (shortest path between two lines on a sphere) between Beijing and Los Angeles through a command line interface. The areas (in pixels) will be calculated for Japan and Taiwan to compare how the different projection methods distort the projected areas.
 
+# Examples
+
+Visualizing prosperity levels for countries and population sizes for cities across the world using the Mercator projection. ![Whole world](figures/whole_world.png)
+
+Azimuthal equidistant projection within the latitude range of 10 to 80. ![Azimuthal lat 10 to 80](figures/2_azimuthal.png)
+
+Geodesic line (shortest path between two lines on a sphere) between Beijing and Los Angeles using the Mercator projection. Shows the distortions of using this type of projection. ![Geodesic Mercator](figures/3_mercator_geodesic.png)
+
+Geodesic line between Beijing and Los Angeles using the Azimuthal equidistant projection, with center at Beijing. Visualizing the fact that all straight lines passing through the center is a geodesic. ![Geodesic Azimuthal](figures/3_azimuthal_geodesic_center_bj.png)
+
 # Requirements
 * Python 2.7
 * numpy
